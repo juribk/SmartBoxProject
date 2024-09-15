@@ -6,8 +6,8 @@
 #include <Wire.h>
 
 #include "Params.h"
-#include "RS485.h"
 #include "DWIN.h"
+#include "FREQ.h"
 
 
 
@@ -208,7 +208,7 @@ void setup()
   pinMode(39, OUTPUT);
   pinMode(36, OUTPUT);
 
-  //Rs485_Init(UART_NUM_RS485, 17, 16, 4, 57600);
+  Freq::FREQ_Init(UART_NUM_RS485, 17, 16, 4, 57600);
   DWIN_Init(UART_NUM_DWIN, 19, 18, UART_PIN_NO_CHANGE, 115200);
 
   //Params_Init();
