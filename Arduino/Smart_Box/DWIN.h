@@ -21,5 +21,6 @@ extern QueueHandle_t xQueue_DWIN_Tx;
 
 void DWIN_Init(int uart_num, int tx_io_num, int rx_io_num, int de_io_num, int baud_rate);
 void DWIN_Send(int addr, int value);
+int DWIN_Get_Addr_Param(int dwin_addr);
 
 #endif // DWIN_H

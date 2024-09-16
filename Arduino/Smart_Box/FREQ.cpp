@@ -1,49 +1,61 @@
 #include "FREQ.h"
+#include "DWIN.h"
 #include "Params.h"
 
 namespace Freq
 {
+
   static const char *TAG_FREQ = "FREQ_events";
   int m_uart_num;
   QueueHandle_t xQueue_RS485;
-  //QueueHandle_t xQueue_FREQ_Rx;
+  QueueHandle_t xQueue_FREQ_Rx;
   QueueHandle_t xQueue_FREQ_Tx;
 
+  // --- Функции команд для частотников
   /**
   * @Function
-  *      void FREQ_Start(int frq_num, int start)
+  *      void FREQ_Command(int cmd, int addr, int value)
   * @param
-  *      frq_addr - Адрес частотника
-  *      start - 1-стартб 0-Стоп
+  *      cmd   - Команда
+  *      addr  - Адрес частотника
+  *      value - Значение
   * @Summary
   *      Старт/Стоп частотника
   */
-  void FREQ_Start(int frq_addr, int start)
+  void FREQ_Command(int cmd, int addr, int value)
   {
     FREQ_Message_t msg_tx;
-    msg_tx.type = FRQ_TYPE_SET;
-    msg_tx.device = frq_addr;
-    msg_tx.addr = 0x9CA7;
-    msg_tx.value = start;
+    msg_tx.device = addr;
+    msg_tx.addr = cmd;
+    switch (cmd) 
+    {
+      case FREQ_CMD_START:
+        msg_tx.type = FRQ_TYPE_SET;
+        msg_tx.value = value;
+        break;
+      case FREQ_CMD_SPEED:
+        msg_tx.type = FRQ_TYPE_SET;
+        msg_tx.value = value * 10;
+        break;
+      case FREQ_CMD_CURRENT:
+        msg_tx.type = FRQ_TYPE_GET;
+        msg_tx.value = 1;
+        break;
+      case FREQ_CMD_VOLTAGE:
+        msg_tx.type = FRQ_TYPE_GET;
+        msg_tx.value = 1;
+        break;
+      case FREQ_CMD_TEMPER:
+        msg_tx.type = FRQ_TYPE_GET;
+        msg_tx.value = 1;
+        break;
+
+      default:
+        return;
+    }
+
     xQueueSendToFront(xQueue_FREQ_Tx, &msg_tx, 0);
-  }
-  /**
-  * @Function
-  *      void FREQ_Set_Speed(int frq_addr, float speed)
-  * @param
-  *      frq_addr - Адрес частотника
-  *      speed - Скорость
-  * @Summary
-  *      Установка скорости вращения 
-  */
-  void FREQ_Set_Speed(int frq_addr, float speed)
-  {
-    FREQ_Message_t msg_tx;
-    msg_tx.type = FRQ_TYPE_SET;
-    msg_tx.device = frq_addr;
-    msg_tx.value = speed * 10;
-    msg_tx.addr = 0x9CA6;
-    xQueueSendToFront(xQueue_FREQ_Tx, &msg_tx, 0);
+
   }
 
   void FREQ_Tx_Event_Task(void *pvParameters)
@@ -51,18 +63,20 @@ namespace Freq
     QueueHandle_t queue = *((QueueHandle_t*) pvParameters);
     uint8_t* buf = (uint8_t*) malloc(BUF_SIZE_RS485);
     int size;
-    
+    int addr_param;
+
     while (true) 
     {
-      FREQ_Message_t msg;
+      FREQ_Message_t msg_tx;
+      FREQ_Message_t msg_rx;
       size = 0;
-      if (xQueueReceive(queue, &msg, (TickType_t)portMAX_DELAY)) 
+      if (xQueueReceive(queue, &msg_tx, (TickType_t)portMAX_DELAY)) 
       {
-        ESP_LOGI(TAG_FREQ, "device=%04X, addr=%04X, value=%04X", msg.device, msg.addr, msg.value);
+        ESP_LOGI(TAG_FREQ, "device=%04X, addr=%04X, value=%04X", msg_tx.device, msg_tx.addr, msg_tx.value);
 
-        buf[0] = msg.device; buf[1] = 0x06; 
-        buf[2] = msg.addr >> 8; buf[3] = msg.addr & 0xFF;
-        buf[4] = msg.value >> 8; buf[5] = msg.value & 0xFF;
+        buf[0] = msg_tx.device; buf[1] = msg_tx.type; 
+        buf[2] = msg_tx.addr >> 8; buf[3] = msg_tx.addr & 0xFF;
+        buf[4] = msg_tx.value >> 8; buf[5] = msg_tx.value & 0xFF;
 
         uint16_t crc = CRC_From_Buff(buf, 6);
         buf[6] = crc & 0xFF; buf[7] = crc >> 8;
@@ -70,37 +84,49 @@ namespace Freq
 
         uart_write_bytes(m_uart_num, (const char*)buf, size);
 
-        // vTaskDelay(10 / portTICK_PERIOD_MS);
-        // if (msg.type == TYPE_SET)
-        // {
-        //   buf[0] = msg.device; buf[1] = 0x06; 
-        //   buf[2] = msg.addr >> 8; buf[3] = msg.addr & 0xFF;
-        //   buf[4] = msg.value >> 8; buf[5] = msg.value & 0xFF;
+        // ----------------------------------------------------------------------------
+        // --- Ждем ответа от устройства.
+        if (xQueueReceive(xQueue_FREQ_Rx, &msg_rx, (TickType_t)300)) 
+        {
+          // Все ответы частотника это запрос исполнения или получения параметров.
+          // Обработку ответа производим через DWIN
+          switch (msg_tx.addr) 
+          {
+            case FREQ_CMD_START:
+              addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? DWIN_COMPR_ON : DWIN_FAN_ON;
+              Params::Set_Param(DWIN_Get_Addr_Param(addr_param), (float)msg_rx.value);
+              DWIN_Send(addr_param, msg_rx.value);
+              break;
+            case FREQ_CMD_SPEED:
+              addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? DWIN_COMPR_SPEED : DWIN_FAN_SPEED;
+              Params::Set_Param(DWIN_Get_Addr_Param(addr_param), (float)msg_rx.value / 100);
+              DWIN_Send(addr_param, msg_rx.value / 10);
+              break;
+            case FREQ_CMD_CURRENT:
+              ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_CURRENT=%d", msg_rx.value);
+            
+              break;
+            case FREQ_CMD_VOLTAGE:
+              ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_VOLTAGE=%d", msg_rx.value);
 
-        //   uint16_t crc = CRC_From_Buff(buf, 6);
-        //   buf[6] = crc & 0xFF; buf[7] = crc >> 8;
+              break;
+            case FREQ_CMD_TEMPER:
+              ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_TEMPER=%d", msg_rx.value);
 
-        //   size = 8;
+              break;
 
-        // }
-        // else if (msg.type == TYPE_GET)
-        // {
-        //   buf[0] = msg.device; buf[1] = 0x03; 
-        //   buf[2] = msg.addr >> 8; buf[3] = msg.addr & 0xFF;
-        //   buf[4] = msg.value >> 8; buf[5] = msg.value & 0xFF;
+            default:
+              break;
+          }
 
-        //   uint16_t crc = CRC_From_Buff(buf, 6);
-        //   buf[6] = crc & 0xFF; buf[7] = crc >> 8;
 
-        //   size = 8;
 
-        // }
-          
-        // if (size > 0)
-        // {
-        //   Rs485_Write((const char*)buf, size);
-        //   //uart_write_bytes(m_uart_num, (const char*)buf, size);
-        // }
+        }
+        else
+        {
+          ESP_LOGE(TAG_FREQ, "Time Out: device=%04X, addr=%04X, value=%04X", msg_tx.device, msg_tx.addr, msg_tx.value);
+        }
+
       }
     }
     free(buf);
@@ -126,31 +152,25 @@ namespace Freq
           case UART_DATA:
             uart_read_bytes(m_uart_num, dtmp, event.size, portMAX_DELAY);
 
-            ESP_LOGI(TAG_FREQ, "[RX SIZE]=%d, %02X %02X %02X %02X %02X", dtmp[0], dtmp[1], dtmp[2], dtmp[3], dtmp[4]);
+            ESP_LOGI(TAG_FREQ, "[RX SIZE]=%d, %02X %02X %02X %02X %02X %02X", dtmp[0], dtmp[1], dtmp[2], dtmp[3], dtmp[4], dtmp[5]);
+            //DWIN_Send(DWIN_COMPR_ON, (dtmp[4] << 8) + dtmp[5]);
+            if (dtmp[1] == FRQ_TYPE_GET)
+            {
+              msg.type = dtmp[1];
+              msg.addr = 0;
+              msg.value = (dtmp[3] << 8) + dtmp[4];
+            }
+            else if (dtmp[1] == FRQ_TYPE_SET)
+            {
+              msg.type = dtmp[1];
+              msg.addr = (dtmp[2] << 8) + dtmp[3];
+              msg.value = (dtmp[4] << 8) + dtmp[5];
+            }
+            xQueueSendToFront(xQueue_FREQ_Rx, &msg, 0);
 
-            // if (dtmp[1] == 0x03)
-            // {
-            //   msg.type = TYPE_SET;
-            //   msg.addr = 0;
-            //   msg.value = (dtmp[3] << 8) + dtmp[4];
-            //   rx_ok = true;
-            // }
-            // else if (dtmp[1] == 0x06)
-            // {
-            //   msg.type = TYPE_GET;
-            //   msg.addr = (dtmp[2] << 8) + dtmp[3];
-            //   msg.value = (dtmp[4] << 8) + dtmp[5];
-            //   rx_ok = true;
-            // }
-
-            // if (rx_ok)
-            // {
-            //   ESP_LOGI(TAG_RS485, "[Rs485_Rx_Event_Task] device=%04X, addr=%04X, value=%04X", msg.device, msg.addr, msg.value);
-            //   sent = xQueueSendToFront(xQueue_RS485_Rx, &msg, 0);
-            // }
             break;
           default:
-            //ESP_LOGI(TAG_RS485, "[Rs485_Rx_Event_Task] default: event type=%d", event.type);
+            //ESP_LOGI(TAG_RS485, "default: event type=%d", event.type);
             break;
         }
       }
@@ -185,11 +205,10 @@ namespace Freq
     xTaskCreate(Rs485_Rx_Event_Task, "Rs485_Rx_Event_Task", 4098, &xQueue_RS485, tskIDLE_PRIORITY + 2, NULL);
 
     xQueue_FREQ_Tx = xQueueCreate(8, sizeof(FREQ_Message_t));
-    //xQueue_FREQ_Rx = xQueueCreate(8, sizeof(RS485_Message_t));
+    xQueue_FREQ_Rx = xQueueCreate(8, sizeof(FREQ_Message_t));
     xTaskCreate(FREQ_Tx_Event_Task, "FREQ_Tx_Event_Task", 4098, &xQueue_FREQ_Tx, tskIDLE_PRIORITY + 2, NULL);
+
   }
-
-
   /**
   * @Function
   *      void update_crc16(Uint16 *crc, uint16_t data)

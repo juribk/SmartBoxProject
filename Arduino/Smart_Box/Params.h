@@ -22,20 +22,20 @@ extern SemaphoreHandle_t xSemaphore;
 extern float params[255];
 // --- ID params --------------------------------------
 #define PARAM_COMPR_SPEED           0x01
-#define DWIN_COMPR_SPEED_VAL        0x2010
+#define DWIN_COMPR_SPEED            0x2010
 
 #define PARAM_COMPR_ON              0x02
-#define DWIN_COMPR_ON_VAL           0x2015
+#define DWIN_COMPR_ON               0x2015
 
 #define PARAM_FAN_SPEED             0x03
-#define DWIN_FAN_SPEED_VAL          0x201A
+#define DWIN_FAN_SPEED              0x201A
 
 #define PARAM_FAN_ON                0x04
-#define DWIN_FAN_ON_VAL             0x201F
+#define DWIN_FAN_ON                 0x201F
 
 
 #define PARAM_EXCHANGER_ON          0x05
-#define DWIN_EXCHANGER_ON_VAL       0x2024
+#define DWIN_EXCHANGER_ON           0x2024
 // -----------------------------------------------------
 // #define DEVICE_ADDR_DWIN_COMPR_ON_SET       0x2030
 // #define DEVICE_ADDR_DWIN_COMPR_ON_VAL       0x2031

@@ -20,8 +20,14 @@
 #define FRQ_TYPE_SET              0x06
 #define FRQ_TYPE_GET              0x03
 
-#define FREQ_ADDR_FREQ1           0x08
-#define FREQ_ADDR_FREQ2           0x09
+#define FREQ_ADDR_COMPR           0x08
+#define FREQ_ADDR_FAN             0x09
+
+#define FREQ_CMD_START            0x9CA7
+#define FREQ_CMD_SPEED            0x9CA6
+#define FREQ_CMD_CURRENT          0x9CF7
+#define FREQ_CMD_VOLTAGE          0x9CF8
+#define FREQ_CMD_TEMPER           0x9CF9
 
 namespace Freq
 {
@@ -38,7 +44,8 @@ namespace Freq
   extern QueueHandle_t xQueue_FREQ_Tx;
 
 
-  void FREQ_Start(int frq_addr, int start);  
+  void FREQ_Command(int cmd, int addr, int value);
+
   void FREQ_Init(int uart_num, int tx_io_num, int rx_io_num, int de_io_num, int baud_rate);
   uint16_t CRC_From_Buff(uint8_t *buf, uint16_t length);
 }

@@ -14,8 +14,8 @@ int m_dwin_uart_num;
 struct DWIN_Message_t
 {
   int type;
-  int addr;
-  int value;
+  int addr;   // Адрес DWIN
+  int value;  // Значение DWIN
 };
 
 void DWIN_Tx_Task(void* pvParameters)
@@ -44,6 +44,27 @@ void DWIN_Tx_Task(void* pvParameters)
   vTaskDelete(NULL);
 }
 
+int DWIN_Get_Addr_Param(int dwin_addr)
+{
+  switch (dwin_addr)
+  {
+    case DWIN_COMPR_SPEED:
+      return PARAM_COMPR_SPEED;
+    case DWIN_COMPR_ON:
+      return PARAM_COMPR_ON;
+    case DWIN_FAN_SPEED:
+      return PARAM_FAN_SPEED;
+    case DWIN_FAN_ON:
+      return PARAM_FAN_ON;
+    case DWIN_EXCHANGER_ON:
+      return PARAM_EXCHANGER_ON;
+
+    default:
+      return 0;
+  }
+
+}
+
 
 void DWIN_Rx_Task(void* pvParameters)
 {
@@ -66,38 +87,26 @@ void DWIN_Rx_Task(void* pvParameters)
       switch (msg_rx.addr)
       {
         // ------------------------------------------------
-        case DWIN_COMPR_SPEED_VAL + 1:
-          if (Params::Set_Param(PARAM_COMPR_SPEED, (float)msg_rx.value / 10))
-          {
-            DWIN_Send(DWIN_COMPR_SPEED_VAL, msg_rx.value);
-          }
+        // Отправим команду в частотник. После ответа частотника отправим ответ в DWIN и сохраним в параметры
+        case DWIN_COMPR_SPEED + 1:
+          Freq::FREQ_Command(FREQ_CMD_SPEED, FREQ_ADDR_COMPR, msg_rx.value);
+          //Freq::FREQ_Set_Speed(FREQ_ADDR_COMPR, msg_rx.value);
           break;
-        case DWIN_COMPR_ON_VAL + 1:
-          if (Params::Set_Param(PARAM_COMPR_SPEED, (float)msg_rx.value))
-          {
-            DWIN_Send(DWIN_COMPR_ON_VAL, msg_rx.value);
-            Freq::FREQ_Start(FREQ_ADDR_FREQ1, msg_rx.value);
-          }
+        case DWIN_COMPR_ON + 1:
+          Freq::FREQ_Command(FREQ_CMD_START, FREQ_ADDR_COMPR, msg_rx.value);
+
+          //Freq::FREQ_Start(FREQ_ADDR_COMPR, msg_rx.value); 
           break;
         // ------------------------------------------------
-        case DWIN_FAN_SPEED_VAL + 1:
-          if (Params::Set_Param(PARAM_FAN_SPEED, (float)msg_rx.value / 10))
-          {
-            DWIN_Send(DWIN_FAN_SPEED_VAL, msg_rx.value);
-          }
+        case DWIN_FAN_SPEED + 1:
           break;
-        case DWIN_FAN_ON_VAL + 1:
-          if (Params::Set_Param(PARAM_FAN_ON, (float)msg_rx.value))
-          {
-            DWIN_Send(DWIN_FAN_ON_VAL, msg_rx.value);
-          }
+        case DWIN_FAN_ON + 1:
+          Freq::FREQ_Command(FREQ_CMD_CURRENT, FREQ_ADDR_COMPR, msg_rx.value);        
+          Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, msg_rx.value);        
+          Freq::FREQ_Command(FREQ_CMD_TEMPER, FREQ_ADDR_COMPR, msg_rx.value);        
           break;
         // ------------------------------------------------
-        case DWIN_EXCHANGER_ON_VAL + 1:
-          if (Params::Set_Param(PARAM_EXCHANGER_ON, (float)msg_rx.value))
-          {
-            DWIN_Send(DWIN_EXCHANGER_ON_VAL, msg_rx.value);
-          }
+        case DWIN_EXCHANGER_ON + 1:
           break;
         // ------------------------------------------------
         // ------------------------------------------------
@@ -155,19 +164,16 @@ void DWIN_Rx_Event_Task(void *pvParameters)
           //msg.device = dtmp[0];
           ESP_LOGI(TAG_DWIN, "[UART SIZE]=%d, [DEVICE]=%04X, [ADDR]=%04X", event.size, dtmp[0], (dtmp[4] << 8) + dtmp[5]);
           //uart_write_bytes(m_dwin_uart_num, dtmp, event.size);
-          //if (msg.device == DEVICE_ADDR_DWIN)          
+          // 0  1  2  3  4  5  6  7  8
+          //5A A5 06 83 10 36 01 00 A0
+          //--          -- --    -- --
+          if (dtmp[3] == 0x83 && dtmp[6] == 0x01)
           {
-            // 0  1  2  3  4  5  6  7  8
-            //5A A5 06 83 10 36 01 00 A0
-            //--          -- --    -- --
-            if (dtmp[3] == 0x83 && dtmp[6] == 0x01)
-            {
-              msg.addr = (dtmp[4] << 8) + dtmp[5];
-              msg.value = (dtmp[7] << 8) + dtmp[8];
+            msg.addr = (dtmp[4] << 8) + dtmp[5];
+            msg.value = (dtmp[7] << 8) + dtmp[8];
 
-              ESP_LOGI(TAG_DWIN, "[DWIN_Rx_Event_Task] addr=%04X, value=%04X", msg.addr, msg.value);
-              xQueueSendToFront(xQueue_DWIN_Rx, &msg, 0);
-            }
+            ESP_LOGI(TAG_DWIN, "[DWIN_Rx_Event_Task] addr=%04X, value=%04X", msg.addr, msg.value);
+            xQueueSendToFront(xQueue_DWIN_Rx, &msg, 0);
           }
           break;
         default:
@@ -184,16 +190,16 @@ void DWIN_Rx_Event_Task(void *pvParameters)
 
 void DWIN_Init_Value()
 {
-  DWIN_Send(DWIN_COMPR_SPEED_VAL, (int)(Params::params[PARAM_COMPR_SPEED] * 10));
-  DWIN_Send(DWIN_COMPR_ON_VAL, (int)(Params::params[PARAM_COMPR_ON]));
-  DWIN_Send(DWIN_COMPR_ON_VAL + 1, (int)(Params::params[PARAM_COMPR_ON]));
+  DWIN_Send(DWIN_COMPR_SPEED, (int)(Params::params[PARAM_COMPR_SPEED] * 10));
+  DWIN_Send(DWIN_COMPR_ON, (int)(Params::params[PARAM_COMPR_ON]));
+  DWIN_Send(DWIN_COMPR_ON + 1, (int)(Params::params[PARAM_COMPR_ON]));
   
-  DWIN_Send(DWIN_FAN_SPEED_VAL, (int)(Params::params[PARAM_FAN_SPEED] * 10));
-  DWIN_Send(DWIN_FAN_ON_VAL, (int)(Params::params[PARAM_FAN_ON]));
-  DWIN_Send(DWIN_FAN_ON_VAL + 1, (int)(Params::params[PARAM_COMPR_ON]));
+  DWIN_Send(DWIN_FAN_SPEED, (int)(Params::params[PARAM_FAN_SPEED] * 10));
+  DWIN_Send(DWIN_FAN_ON, (int)(Params::params[PARAM_FAN_ON]));
+  DWIN_Send(DWIN_FAN_ON + 1, (int)(Params::params[PARAM_COMPR_ON]));
 
-  DWIN_Send(DWIN_EXCHANGER_ON_VAL, (int)(Params::params[PARAM_EXCHANGER_ON]));
-  DWIN_Send(DWIN_EXCHANGER_ON_VAL + 1, (int)(Params::params[PARAM_EXCHANGER_ON]));
+  DWIN_Send(DWIN_EXCHANGER_ON, (int)(Params::params[PARAM_EXCHANGER_ON]));
+  DWIN_Send(DWIN_EXCHANGER_ON + 1, (int)(Params::params[PARAM_EXCHANGER_ON]));
 
 }
 
