@@ -1,19 +1,13 @@
 
-#include <OneWire.h>
-#include <DallasTemperature.h>
-
 #include <ADS1115_WE.h> 
 #include <Wire.h>
 
 #include "Params.h"
 #include "DWIN.h"
 #include "FREQ.h"
+#include "DS18B20.h"
 
 
-
-const int SensorDataPin = 13;     
-OneWire oneWire(SensorDataPin);
-DallasTemperature sensors(&oneWire);
 
 
 #define I2C_ADDRESS 0x4A
@@ -64,6 +58,9 @@ void setup()
   // --- Params --------------------------
   Params::Params_Init();
 
+  // --- DS18B20 -------------------------
+  ds18b20::Init();
+
   // --- DWIN & FREQ init ----------------
   Freq::FREQ_Init(UART_NUM_RS485, 17, 16, 4, 57600);
   DWIN_Init(UART_NUM_DWIN, 19, 18, UART_PIN_NO_CHANGE, 115200);
@@ -88,6 +85,7 @@ void setup()
     adc.setVoltageRange_mV(ADS1115_RANGE_6144); 
     adc.setCompareChannels(ADS1115_COMP_0_GND);
   }
+
   pinMode(ADC_ADDR0, OUTPUT);
   pinMode(ADC_ADDR1, OUTPUT);
   pinMode(ADC_ADDR2, OUTPUT);
@@ -97,8 +95,6 @@ void setup()
   digitalWrite(ADC_ADDR2, HIGH);
   digitalWrite(ADC_ADDR3, HIGH);
 
-
-  sensors.begin();
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -119,7 +115,7 @@ void loop()
       Freq::FREQ_Command(FREQ_CMD_CURRENT, FREQ_ADDR_COMPR, 1);        
       Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, 1);        
 
-
+      ds18b20::Update();
 
 
 

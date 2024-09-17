@@ -1,6 +1,7 @@
 #include "DWIN.h"
 #include "Params.h"
 #include "FREQ.h"
+#include "DS18B20.h"
 
 
 static const char *TAG_DWIN = "DWIN_events";
@@ -80,7 +81,7 @@ void DWIN_Rx_Task(void* pvParameters)
     bool receved = xQueueReceive(queue, &msg_rx, (TickType_t)portMAX_DELAY);
     if (receved)
     {
-      ESP_LOGI(TAG_DWIN, "Addr=%04X, Value=%04X", msg_rx.addr, msg_rx.value);
+      //ESP_LOGI(TAG_DWIN, "Addr=%04X, Value=%04X", msg_rx.addr, msg_rx.value);
       msg_tx.type = TYPE_SET;
       msg_tx.addr = 0;
 
@@ -101,14 +102,28 @@ void DWIN_Rx_Task(void* pvParameters)
         case DWIN_FAN_SPEED + 1:
           break;
         case DWIN_FAN_ON + 1:
-          Freq::FREQ_Command(FREQ_CMD_CURRENT, FREQ_ADDR_COMPR, 1);        
-          Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, 1);        
-          Freq::FREQ_Command(FREQ_CMD_TEMPER, FREQ_ADDR_COMPR, 1);        
           break;
         // ------------------------------------------------
         case DWIN_EXCHANGER_ON + 1:
           break;
-        // ------------------------------------------------
+        
+        // --- Регистрация температурных датчиков ---------
+        case DWIN_TEMP_HOT_IN_SET:
+        case DWIN_TEMP_HOT_OUT_SET:
+        case DWIN_TEMP_COLD_IN_SET:
+        case DWIN_TEMP_COLD_OUT_SET:
+        case DWIN_TEMP_COMPRESSOR_SET:
+        case DWIN_TEMP_EXCHANGER_SET:
+        {
+          ds18b20::Sensor *sensor = ds18b20::Get_Sensor_Dwin_Addr_Set(msg_rx.addr);
+          sensor->Search_Device_Address();
+
+          ESP_LOGI(TAG_DWIN, "DWIN_TEMP_SET: value=%d", msg_rx.value);
+          break;
+        }
+
+
+
         // ------------------------------------------------
 
 
@@ -162,7 +177,7 @@ void DWIN_Rx_Event_Task(void *pvParameters)
           uart_read_bytes(m_dwin_uart_num, dtmp, event.size, portMAX_DELAY);
 
           //msg.device = dtmp[0];
-          ESP_LOGI(TAG_DWIN, "[UART SIZE]=%d, [DEVICE]=%04X, [ADDR]=%04X", event.size, dtmp[0], (dtmp[4] << 8) + dtmp[5]);
+          //ESP_LOGI(TAG_DWIN, "[UART SIZE]=%d, [DEVICE]=%04X, [ADDR]=%04X", event.size, dtmp[0], (dtmp[4] << 8) + dtmp[5]);
           //uart_write_bytes(m_dwin_uart_num, dtmp, event.size);
           // 0  1  2  3  4  5  6  7  8
           //5A A5 06 83 10 36 01 00 A0
@@ -172,7 +187,7 @@ void DWIN_Rx_Event_Task(void *pvParameters)
             msg.addr = (dtmp[4] << 8) + dtmp[5];
             msg.value = (dtmp[7] << 8) + dtmp[8];
 
-            ESP_LOGI(TAG_DWIN, "[DWIN_Rx_Event_Task] addr=%04X, value=%04X", msg.addr, msg.value);
+            //ESP_LOGI(TAG_DWIN, "[DWIN_Rx_Event_Task] addr=%04X, value=%04X", msg.addr, msg.value);
             xQueueSendToFront(xQueue_DWIN_Rx, &msg, 0);
           }
           break;

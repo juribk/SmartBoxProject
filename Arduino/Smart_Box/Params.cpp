@@ -1,7 +1,9 @@
+
 #include "Params.h"
-
 #include "EEPROM.h"
+#include "DS18B20.h"
 
+#define EEPROM_SIZE                 sizeof(float) * EEPROM_PARAM_COUNT + DS18B20_COUNT * (8 * sizeof(uint8_t))
 
 namespace Params
 {
@@ -9,8 +11,30 @@ namespace Params
   SemaphoreHandle_t xSemaphore = NULL;
   float params[255];
 
-
   bool EEPROM_INIT;
+
+  void Read_DS18B20_Address(int pos)
+  {
+    // if (!EEPROM_INIT)
+    // {
+    //   return;
+    // }
+
+    // int addr = EEPROM_PARAM_ADDR_END + pos * (8 * sizeof(uint8_t));
+    // for (int i = 0; i < 8; i++)    
+    // {
+    //   addr = addr + i * sizeof(uint8_t);
+    //   therm_DS18B20[pos][i] = EEPROM.readByte(addr);
+    // }
+  }
+  void Read_ALL_DS18B20_Address()
+  {
+    for (int i = 0; i < DS18B20_COUNT; i++)    
+    {
+      Read_DS18B20_Address(i);
+    }
+  }
+
 
   bool Set_Param(int id, float value)
   {
@@ -70,7 +94,7 @@ namespace Params
     if (!reset)
     {
       int address = 0;
-      for (int i = 0; i < 10; i++)
+      for (int i = 0; i < EEPROM_PARAM_COUNT; i++)
       {
         params[i] = EEPROM.readFloat(address);
         address += sizeof(float);
@@ -103,6 +127,7 @@ namespace Params
       EEPROM_INIT = true;
     }
     EEPROM_Read_Params(true);
+    
 
   }
 

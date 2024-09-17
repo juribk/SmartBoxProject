@@ -93,7 +93,7 @@ namespace Freq
       size = 0;
       if (xQueueReceive(queue, &msg_tx, (TickType_t)portMAX_DELAY)) 
       {
-        ESP_LOGI(TAG_FREQ, "device=%04X, addr=%04X, value=%04X", msg_tx.device, msg_tx.addr, msg_tx.value);
+        //ESP_LOGI(TAG_FREQ, "device=%04X, addr=%04X, value=%04X", msg_tx.device, msg_tx.addr, msg_tx.value);
 
         buf[0] = msg_tx.device; buf[1] = msg_tx.type; 
         buf[2] = msg_tx.addr >> 8; buf[3] = msg_tx.addr & 0xFF;
@@ -127,7 +127,7 @@ namespace Freq
               addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? PARAM_COMPR_CURRENT : PARAM_FAN_CURRENT;
               Params::Set_Param(addr_param, Divide((float)msg_rx.value, 100));
 
-              ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_CURRENT=%d", msg_rx.value);
+              //ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_CURRENT=%d", msg_rx.value);
             
               break;
             case FREQ_CMD_VOLTAGE:
@@ -186,7 +186,7 @@ namespace Freq
           case UART_DATA:
             uart_read_bytes(m_uart_num, dtmp, event.size, portMAX_DELAY);
 
-            ESP_LOGI(TAG_FREQ, "[RX SIZE]=%d, %02X %02X %02X %02X %02X %02X", dtmp[0], dtmp[1], dtmp[2], dtmp[3], dtmp[4], dtmp[5]);
+            //ESP_LOGI(TAG_FREQ, "[RX SIZE]=%d, %02X %02X %02X %02X %02X %02X", dtmp[0], dtmp[1], dtmp[2], dtmp[3], dtmp[4], dtmp[5]);
             //DWIN_Send(DWIN_COMPR_ON, (dtmp[4] << 8) + dtmp[5]);
             if (dtmp[1] == FRQ_TYPE_GET)
             {
