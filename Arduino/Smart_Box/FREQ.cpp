@@ -58,12 +58,33 @@ namespace Freq
 
   }
 
+  float Divide(float val, float divider)
+  {
+    if (val == 0)
+    {
+      return 0;
+    }
+    else
+    {
+      return val / divider;
+    }
+  }
+
+  float Get_Param_DWIN(int freq_addr, int dwin_addr1, int dwin_addr2)
+  {
+    float value;
+    int addr_param = (freq_addr == FREQ_ADDR_COMPR) ? dwin_addr1 : dwin_addr2;
+    Params::Get_Param(addr_param, value);    
+    return value;
+  } 
+
   void FREQ_Tx_Event_Task(void *pvParameters)
   {
     QueueHandle_t queue = *((QueueHandle_t*) pvParameters);
     uint8_t* buf = (uint8_t*) malloc(BUF_SIZE_RS485);
     int size;
     int addr_param;
+    float value;
 
     while (true) 
     {
@@ -103,15 +124,28 @@ namespace Freq
               DWIN_Send(addr_param, msg_rx.value / 10);
               break;
             case FREQ_CMD_CURRENT:
+              addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? PARAM_COMPR_CURRENT : PARAM_FAN_CURRENT;
+              Params::Set_Param(addr_param, Divide((float)msg_rx.value, 100));
+
               ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_CURRENT=%d", msg_rx.value);
             
               break;
             case FREQ_CMD_VOLTAGE:
-              ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_VOLTAGE=%d", msg_rx.value);
+              addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? PARAM_COMPR_VOLTAGE : PARAM_FAN_VOLTAGE;
+              Params::Set_Param(addr_param, Divide((float)msg_rx.value, 10));
+
+              value = Get_Param_DWIN(msg_tx.device, PARAM_COMPR_CURRENT, PARAM_FAN_CURRENT);
+
+              addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? DWIN_COMPR_POWER : DWIN_FAN_POWER;
+              DWIN_Send(addr_param, Divide((msg_rx.value * value), 1));
+
+              //ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_VOLTAGE=%d, CURRENT VALUE=%f, POWER=%f", msg_rx.value, value, msg_rx.value * value);
 
               break;
             case FREQ_CMD_TEMPER:
-              ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_TEMPER=%d", msg_rx.value);
+              addr_param = (msg_tx.device == FREQ_ADDR_COMPR) ? PARAM_COMPR_FREQ_TEMPER : PARAM_FAN_FREQ_TEMPER;
+              Params::Set_Param(addr_param, (float)msg_rx.value / 100);
+              //ESP_LOGI(TAG_FREQ, "*** FREQ_CMD_TEMPER=%d", msg_rx.value);
 
               break;
 
@@ -202,11 +236,11 @@ namespace Freq
     uart_set_pin(m_uart_num, tx_io_num, rx_io_num, de_io_num, UART_PIN_NO_CHANGE);
     uart_set_mode(m_uart_num, UART_MODE_RS485_HALF_DUPLEX);  
 
-    xTaskCreate(Rs485_Rx_Event_Task, "Rs485_Rx_Event_Task", 4098, &xQueue_RS485, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(Rs485_Rx_Event_Task, "Rs485_Rx_Event_Task", 8192, &xQueue_RS485, tskIDLE_PRIORITY + 2, NULL);
 
     xQueue_FREQ_Tx = xQueueCreate(8, sizeof(FREQ_Message_t));
     xQueue_FREQ_Rx = xQueueCreate(8, sizeof(FREQ_Message_t));
-    xTaskCreate(FREQ_Tx_Event_Task, "FREQ_Tx_Event_Task", 4098, &xQueue_FREQ_Tx, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(FREQ_Tx_Event_Task, "FREQ_Tx_Event_Task", 8192, &xQueue_FREQ_Tx, tskIDLE_PRIORITY + 2, NULL);
 
   }
   /**

@@ -38,148 +38,44 @@ struct State_t
 };
 State_t state;
 
-
-
-
-void Rs485_Rx_Task(void* pvParameters)
+// --- Timers --------------------------------------------
+hw_timer_t *timer_read_sensors = NULL;
+volatile SemaphoreHandle_t semaphore_timer_read_sensors;
+void ARDUINO_ISR_ATTR onTimer_Read_Sensors() 
 {
-  // RS485_Message_t msg_rx;
-  // RS485_Message_t msg_tx;
-  // bool sent;
+  // // Increment the counter and set the time of ISR
+  // portENTER_CRITICAL_ISR(&timerMux);
+  // isrCounter = isrCounter + 1;
+  // lastIsrAt = millis();
+  // portEXIT_CRITICAL_ISR(&timerMux);
 
-  // while(1)
-  // {
-  //   bool receved = xQueueReceive(xQueue_RS485_Rx, &msg_rx, (TickType_t)portMAX_DELAY);
-  //   bool tx_ok;
-  //   if (receved)
-  //   {
-
-  //     if (msg_rx.device == DEVICE_ADDR_DWIN)
-  //     {
-  //       Serial.printf("### Get_Queue_Rx DWIN  Device=%04X, Addr=%04X, Value=%04X\n", msg_rx.device, msg_rx.addr, msg_rx.value);        
-  //       tx_ok = false;
-  //       msg_tx.device = msg_rx.device;
-
-  //       switch (msg_rx.addr)
-  //       {
-  //         case DEVICE_ADDR_DWIN_COMPR_SPEED_SET:
-  //           msg_tx.type = TYPE_SET;
-  //           msg_tx.device = DEVICE_ADDR_FREQ1;
-  //           msg_tx.value = msg_rx.value * 10;
-  //           msg_tx.addr = 0x9CA6;
-  //           sent = xQueueSendToFront(xQueue_RS485_Tx, &msg_tx, 0);
-
-
-  //           // msg_tx.addr = DEVICE_ADDR_DWIN_COMPR_SPEED_VAL;
-  //           // msg_tx.value = msg_rx.value;
-  //           // params.compr_speed = (float)msg_rx.value / 10;
-  //           // EEPROM_Write_Params();
-  //           // tx_ok = true;
-
-  //           break;
-  //         case DEVICE_ADDR_DWIN_FAN_SPEED_SET:
-  //           msg_tx.addr = DEVICE_ADDR_DWIN_FAN_SPEED_VAL;
-  //           msg_tx.value = msg_rx.value;
-  //           params.fan_speed = (float)msg_rx.value / 10;
-  //           EEPROM_Write_Params();
-  //           tx_ok = true;
-
-  //           break;
-  //         case DEVICE_ADDR_DWIN_COMPR_ON_SET:
-  //           msg_tx.type = TYPE_SET;
-  //           msg_tx.device = DEVICE_ADDR_FREQ1;
-  //           msg_tx.addr = 0x9CA7;
-  //           if (msg_rx.value == DWIN_PARAM_ON)
-  //           {
-  //             msg_tx.value = 0x0001;
-  //           }
-  //           else
-  //           {
-  //             msg_tx.value = 0x0000;
-  //           }
-  //           sent = xQueueSendToFront(xQueue_RS485_Tx, &msg_tx, 0);
-  //           break;
-  //         case DEVICE_ADDR_DWIN_FAN_ON_SET:
-  //           msg_tx.addr = DEVICE_ADDR_DWIN_FAN_ON_VAL;
-  //           msg_tx.value = msg_rx.value;
-  //           state.fan_on = msg_rx.value;
-  //           tx_ok = true;
-
-  //           break;
-  //         case DEVICE_ADDR_DWIN_EXCHANGER_ON_SET:
-  //           msg_tx.addr = DEVICE_ADDR_DWIN_EXCHANGER_ON_VAL;
-  //           msg_tx.value = msg_rx.value;
-  //           state.exhanger_on = msg_rx.value;
-  //           tx_ok = true;
-
-  //           break;
-
-  //         default:
-
-  //           break;
-
-  //       }
-
-  //       if (tx_ok)
-  //       {
-  //         sent = xQueueSendToFront(xQueue_RS485_Tx, &msg_tx, 0);
-  //       }
-
-  //     }
-  //     // Частотники
-  //     else
-  //     {
-  //       Serial.printf("### Get_Queue_Rx FREQ  Device=%04X, Addr=%04X, Value=%04X\n", msg_rx.device, msg_rx.addr, msg_rx.value);        
-
-  //       switch (msg_rx.addr)
-  //       {
-  //         case 0x9CA7: // Запуск останов - ответ
-  //           state.compr_on = (msg_rx.value == 0x0001) ? DWIN_PARAM_ON : DWIN_PARAM_OFF;
-
-  //           msg_tx.device = DEVICE_ADDR_DWIN;
-  //           msg_tx.addr = DEVICE_ADDR_DWIN_COMPR_ON_VAL;
-  //           msg_tx.value = state.compr_on;
-  //           sent = xQueueSendToFront(xQueue_RS485_Tx, &msg_tx, 0);
-
-  //           break;
-
-  //         case 0x9CA6: // Скорость - ответ
-  //           params.compr_speed = (float)msg_rx.value / 100;
-
-  //           msg_tx.device = DEVICE_ADDR_DWIN;
-  //           msg_tx.addr = DEVICE_ADDR_DWIN_COMPR_SPEED_VAL;
-  //           msg_tx.value = params.compr_speed * 10;
-  //           EEPROM_Write_Params();
-  //           sent = xQueueSendToFront(xQueue_RS485_Tx, &msg_tx, 0);
-
-
-
-
-  //         default:
-
-  //           break;
-
-  //       }
-
-
-
-  //     }
-  //   }
-
-  // }
-
-  vTaskDelete(NULL);
+  // Give a semaphore that we can check in the loop
+  xSemaphoreGiveFromISR(semaphore_timer_read_sensors, NULL);
 }
+
+
+
 
 
 void setup() 
 {
-  Params::Params_Init();
- 
-
   Serial.begin(115200);  
 
-  // --- I2C --------------------------
+  // --- Params --------------------------
+  Params::Params_Init();
+
+  // --- DWIN & FREQ init ----------------
+  Freq::FREQ_Init(UART_NUM_RS485, 17, 16, 4, 57600);
+  DWIN_Init(UART_NUM_DWIN, 19, 18, UART_PIN_NO_CHANGE, 115200);
+
+  // --- Timers --------------------------
+  semaphore_timer_read_sensors = xSemaphoreCreateBinary();
+  timer_read_sensors = timerBegin(1000000);
+  timerAttachInterrupt(timer_read_sensors, &onTimer_Read_Sensors);
+  timerAlarm(timer_read_sensors, 1000000, true, 0);
+
+
+  // --- I2C -----------------------------
   Wire.begin();
   adc = ADS1115_WE(I2C_ADDRESS);
   init_i2c = adc.init();
@@ -205,15 +101,9 @@ void setup()
   sensors.begin();
 
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(39, OUTPUT);
-  pinMode(36, OUTPUT);
 
-  Freq::FREQ_Init(UART_NUM_RS485, 17, 16, 4, 57600);
-  DWIN_Init(UART_NUM_DWIN, 19, 18, UART_PIN_NO_CHANGE, 115200);
 
-  //Params_Init();
 
-  //xTaskCreate(Rs485_Rx_Task, "Rs485_Rx_Task", 4098, NULL, tskIDLE_PRIORITY + 1, NULL);
 
 }
 
@@ -221,7 +111,21 @@ void loop()
 {
   while(true)
   {
-    digitalWrite(LED_BUILTIN, HIGH);
+    if (xSemaphoreTake(semaphore_timer_read_sensors, 0) == pdTRUE) 
+    {
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+
+      Freq::FREQ_Command(FREQ_CMD_TEMPER, FREQ_ADDR_COMPR, 1);        
+      Freq::FREQ_Command(FREQ_CMD_CURRENT, FREQ_ADDR_COMPR, 1);        
+      Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, 1);        
+
+
+
+
+
+    }
+
+
     // digitalWrite(39, HIGH);
     // digitalWrite(36, HIGH);
 
@@ -234,11 +138,13 @@ void loop()
 
     // // }
 
-    delay(500);
-    //   digitalWrite(LED_BUILTIN, LOW);
-    //   digitalWrite(39, LOW);
-    //   digitalWrite(36, LOW);
-    // delay(500);
+    delay(100);
+
+
+
+
+
+
 
     //  sensors.requestTemperatures(); 
     //  float temperature_Celsius = sensors.getTempCByIndex(0);

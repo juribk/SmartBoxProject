@@ -33,9 +33,22 @@ extern float params[255];
 #define PARAM_FAN_ON                0x04
 #define DWIN_FAN_ON                 0x201F
 
-
 #define PARAM_EXCHANGER_ON          0x05
 #define DWIN_EXCHANGER_ON           0x2024
+
+// ----------------------------------------------------
+#define PARAM_COMPR_CURRENT         0x06
+#define PARAM_COMPR_VOLTAGE         0x07
+#define DWIN_COMPR_POWER            0x2100 + 10 // 210A
+#define PARAM_FAN_CURRENT           0x08
+#define PARAM_FAN_VOLTAGE           0x09
+#define DWIN_FAN_POWER              0x2100 + 15 // 210F
+
+#define PARAM_COMPR_FREQ_TEMPER     0x0A
+#define DWIN_COMPR_FREQ_TEMPER      0x2100 + 20 // 2114
+#define PARAM_FAN_FREQ_TEMPER       0x0B
+#define DWIN_FAN_FREQ_TEMPER        0x2100 + 25 // 2119
+
 // -----------------------------------------------------
 // #define DEVICE_ADDR_DWIN_COMPR_ON_SET       0x2030
 // #define DEVICE_ADDR_DWIN_COMPR_ON_VAL       0x2031

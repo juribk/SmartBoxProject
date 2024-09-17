@@ -30,7 +30,7 @@ void DWIN_Tx_Task(void* pvParameters)
     bool receved = xQueueReceive(queue, &msg_tx, (TickType_t)portMAX_DELAY);
     if (receved)
     {
-      ESP_LOGI(TAG_DWIN, "Addr=%04X, Value=%04X", msg_tx.addr, msg_tx.value);
+      //ESP_LOGI(TAG_DWIN, "Addr=%04X, Value=%04X", msg_tx.addr, msg_tx.value);
 
       buf[0] = 0x5A; buf[1] = 0xA5; buf[2] = 0x05; buf[3] = 0x82; 
       buf[4] = msg_tx.addr >> 8; buf[5] = msg_tx.addr & 0xFF;
@@ -101,9 +101,9 @@ void DWIN_Rx_Task(void* pvParameters)
         case DWIN_FAN_SPEED + 1:
           break;
         case DWIN_FAN_ON + 1:
-          Freq::FREQ_Command(FREQ_CMD_CURRENT, FREQ_ADDR_COMPR, msg_rx.value);        
-          Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, msg_rx.value);        
-          Freq::FREQ_Command(FREQ_CMD_TEMPER, FREQ_ADDR_COMPR, msg_rx.value);        
+          Freq::FREQ_Command(FREQ_CMD_CURRENT, FREQ_ADDR_COMPR, 1);        
+          Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, 1);        
+          Freq::FREQ_Command(FREQ_CMD_TEMPER, FREQ_ADDR_COMPR, 1);        
           break;
         // ------------------------------------------------
         case DWIN_EXCHANGER_ON + 1:
