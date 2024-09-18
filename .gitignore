@@ -1,3 +1,5 @@
 Arduino/Smart_Box/libraries/
 *.pwma
-*.pdf
+
+Docs/750W的通讯协议.pdf
+Docs/750W英文.pdf
