@@ -18,6 +18,7 @@ namespace ds18b20
       int dwin_addr_set;
       int dwin_addr_val;
       DeviceAddress device_address;
+      float value;
     private:
       int param_index;
       int eeprom_addr;

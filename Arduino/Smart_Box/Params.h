@@ -14,6 +14,7 @@ namespace Params
 {
 #define EEPROM_PARAM_COUNT          128
 #define EEPROM_PARAM_ADDR_END       sizeof(float) * EEPROM_PARAM_COUNT
+#define EEPROM_DS18B20_ADDR_END     EEPROM_PARAM_ADDR_END + param_index * (DS18B20_COUNT * sizeof(uint8_t))
 
 
 
@@ -58,7 +59,7 @@ extern bool EEPROM_INIT;
 #define PARAM_FAN_FREQ_TEMPER       0x0B
 #define DWIN_FAN_FREQ_TEMPER        0x2100 + 25 // 2119
 
-// ----------------------------------------------------
+// --- DS18B20 -----------------------------------------
 #define DWIN_TEMP_SET               0x2132
 #define DWIN_TEMP_HOT_IN_SET        DWIN_TEMP_SET + 00 // 2132
 #define DWIN_TEMP_HOT_OUT_SET       DWIN_TEMP_SET + 01 // 2133
@@ -75,7 +76,32 @@ extern bool EEPROM_INIT;
 #define DWIN_TEMP_COMPRESSOR        DWIN_TEMP_VAL + 04 // 214A
 #define DWIN_TEMP_EXCHANGER         DWIN_TEMP_VAL + 05 // 214B
 
-// -----------------------------------------------------
+// --- ADS1115 ------------------------------------------
+#define DWIN_ADC_VAL                0x215F
+#define DWIN_ADC00_VOLT_220         DWIN_ADC_VAL + 00   // 0x215F                 
+#define DWIN_ADC01_CURRENT_220      DWIN_ADC_VAL + 01   // 0x2160                
+#define DWIN_ADC02                  DWIN_ADC_VAL + 02   // 0x2161    
+#define DWIN_ADC03                  DWIN_ADC_VAL + 03   // 0x2162                
+#define DWIN_ADC04                  DWIN_ADC_VAL + 04   // 0x2163                
+#define DWIN_ADC05                  DWIN_ADC_VAL + 05   // 0x2164                
+#define DWIN_ADC06                  DWIN_ADC_VAL + 06   // 0x2165                
+#define DWIN_ADC07                  DWIN_ADC_VAL + 07   // 0x2166                
+#define DWIN_ADC08                  DWIN_ADC_VAL + 08   // 0x2167                
+#define DWIN_ADC09                  DWIN_ADC_VAL + 09   // 0x2168                
+#define DWIN_ADC10                  DWIN_ADC_VAL + 10   // 0x2169                
+#define DWIN_ADC11                  DWIN_ADC_VAL + 11   // 0x216A
+#define DWIN_ADC12                  DWIN_ADC_VAL + 12   // 0x216B                
+#define DWIN_ADC13                  DWIN_ADC_VAL + 13   // 0x216C                
+#define DWIN_ADC14                  DWIN_ADC_VAL + 14   // 0x216D                
+#define DWIN_ADC15                  DWIN_ADC_VAL + 15   // 0x216E                
+
+
+
+
+
+
+
+
 // #define DEVICE_ADDR_DWIN_COMPR_ON_SET       0x2030
 // #define DEVICE_ADDR_DWIN_COMPR_ON_VAL       0x2031
 // #define DEVICE_ADDR_DWIN_FAN_ON_SET         0x2032
@@ -83,22 +109,9 @@ extern bool EEPROM_INIT;
 // #define DEVICE_ADDR_DWIN_EXCHANGER_ON_SET   0x2034
 // #define DEVICE_ADDR_DWIN_EXCHANGER_ON_VAL   0x2035
 
-
-  // struct Params_t
-  // {
+#define GET_BIT(DATA, NUM_BIT) ((DATA >> NUM_BIT) & 0x01)
 
 
-  //   float compr_speed;
-  //   float fan_speed;
-
-  //   int compr_on;
-  //   int fan_on;
-  //   int exhanger_on;
-
-
-  // };
-
-  // extern Params_t params;
 
 
   void Params_Init();
@@ -106,6 +119,9 @@ extern bool EEPROM_INIT;
   bool Get_Param(int id, float &value);
 
   void EEPROM_Write_Params();
+  bool Commit();
+  bool WriteByte(int addr, uint8_t value);
+  uint8_t ReadByte(int addr);
 
 
 

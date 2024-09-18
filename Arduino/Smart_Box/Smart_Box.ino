@@ -6,31 +6,15 @@
 #include "DWIN.h"
 #include "FREQ.h"
 #include "DS18B20.h"
+#include "ADS1115.h"
 
-
-
-
-#define I2C_ADDRESS 0x4A
-ADS1115_WE adc;
-bool init_i2c = false;
-
+// #define I2C_ADDRESS 0x4A
+// ADS1115_WE adc;
+// bool init_i2c = false;
 
 #define UART_NUM_DWIN             UART_NUM_1
 #define UART_NUM_RS485            UART_NUM_2
 #define LED_BUILTIN               2
-
-#define ADC_ADDR0                 12
-#define ADC_ADDR1                 2
-#define ADC_ADDR2                 27
-#define ADC_ADDR3                 26
-
-struct State_t
-{
-  int compr_on;
-  int fan_on;
-  int exhanger_on;
-};
-State_t state;
 
 // --- Timers --------------------------------------------
 hw_timer_t *timer_read_sensors = NULL;
@@ -47,19 +31,21 @@ void ARDUINO_ISR_ATTR onTimer_Read_Sensors()
   xSemaphoreGiveFromISR(semaphore_timer_read_sensors, NULL);
 }
 
-
-
-
-
+// --- Setup ---------------------------------------------
 void setup() 
 {
   Serial.begin(115200);  
+  // --- I2C -----------------------------
+  Wire.begin();
 
   // --- Params --------------------------
   Params::Params_Init();
 
   // --- DS18B20 -------------------------
   ds18b20::Init();
+
+  // --- ADS1115 -------------------------
+  ads1115::Init(); 
 
   // --- DWIN & FREQ init ----------------
   Freq::FREQ_Init(UART_NUM_RS485, 17, 16, 4, 57600);
@@ -72,28 +58,27 @@ void setup()
   timerAlarm(timer_read_sensors, 1000000, true, 0);
 
 
-  // --- I2C -----------------------------
-  Wire.begin();
-  adc = ADS1115_WE(I2C_ADDRESS);
-  init_i2c = adc.init();
-  if (!init_i2c)
-  {
-    Serial.println("ADS1115 not connected!");
-  }
-  else
-  {
-    adc.setVoltageRange_mV(ADS1115_RANGE_6144); 
-    adc.setCompareChannels(ADS1115_COMP_0_GND);
-  }
 
-  pinMode(ADC_ADDR0, OUTPUT);
-  pinMode(ADC_ADDR1, OUTPUT);
-  pinMode(ADC_ADDR2, OUTPUT);
-  pinMode(ADC_ADDR3, OUTPUT);
-  digitalWrite(ADC_ADDR0, HIGH);
-  digitalWrite(ADC_ADDR1, HIGH);
-  digitalWrite(ADC_ADDR2, HIGH);
-  digitalWrite(ADC_ADDR3, HIGH);
+  // adc = ADS1115_WE(I2C_ADDRESS);
+  // init_i2c = adc.init();
+  // if (!init_i2c)
+  // {
+  //   Serial.println("ADS1115 not connected!");
+  // }
+  // else
+  // {
+  //   adc.setVoltageRange_mV(ADS1115_RANGE_6144); 
+  //   adc.setCompareChannels(ADS1115_COMP_0_GND);
+  // }
+
+  // pinMode(ADC_ADDR0, OUTPUT);
+  // pinMode(ADC_ADDR1, OUTPUT);
+  // pinMode(ADC_ADDR2, OUTPUT);
+  // pinMode(ADC_ADDR3, OUTPUT);
+  // digitalWrite(ADC_ADDR0, HIGH);
+  // digitalWrite(ADC_ADDR1, HIGH);
+  // digitalWrite(ADC_ADDR2, HIGH);
+  // digitalWrite(ADC_ADDR3, HIGH);
 
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -116,39 +101,16 @@ void loop()
       Freq::FREQ_Command(FREQ_CMD_VOLTAGE, FREQ_ADDR_COMPR, 1);        
 
       ds18b20::Update();
-
+      ads1115::Update();
 
 
     }
 
 
-    // digitalWrite(39, HIGH);
-    // digitalWrite(36, HIGH);
-
-    // int vp;
-    // int value;
-    // //bool ret = dwin->Get_Queue_Rx(&vp, &value, portMAX_DELAY);
-    // // if (ret)
-    // // {
-    // //   Serial.printf("### Get_Queue_Rx vp=%04X, value=%04X\n", vp, value);
-
-    // // }
-
     delay(100);
 
 
 
-
-
-
-
-    //  sensors.requestTemperatures(); 
-    //  float temperature_Celsius = sensors.getTempCByIndex(0);
-    //  //float temperature_Fahrenheit = sensors.getTempFByIndex(0);
-    //  Serial.print("Temperature: ");
-    //  Serial.print(temperature_Celsius);
-    //  Serial.println(" ºC");
-    //  Serial.println("");
 
     // if (init_i2c)
     // {

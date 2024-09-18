@@ -12,6 +12,8 @@ namespace ds18b20
   OneWire oneWire(DS18B20_PIN);
   DallasTemperature sensors(&oneWire);
 
+  bool DS18B20_INIT = false;
+
   Sensor::Sensor(int param_index, int dwin_addr_set, int dwin_addr_val)
   {
     this->param_index = param_index;
@@ -29,7 +31,7 @@ namespace ds18b20
     int addr = eeprom_addr;
     for (int i = 0; i < 8; i++)    
     {
-      device_address[i] = EEPROM.readByte(addr);
+      device_address[i] = Params::ReadByte(addr);
       addr += sizeof(uint8_t);
     }
     ESP_LOGE(TAG, "Address: %02X %02X %02X %02X %02X %02X %02X %02X", 
@@ -44,10 +46,10 @@ namespace ds18b20
     int addr = eeprom_addr;
     for (int i = 0; i < 8; i++)    
     {
-      EEPROM.write(addr, device_address[i]);
+      Params::WriteByte(addr, device_address[i]);
       addr += sizeof(uint8_t);
     }
-    EEPROM.commit();
+    Params::Commit();
   }
   void Sensor::Search_Device_Address()
   {
@@ -85,6 +87,7 @@ namespace ds18b20
     for (int i = 0; i < DS18B20_COUNT; i++)
     {
       float temp = sensors.getTempC((uint8_t*) sensor[i]->device_address);
+      sensor[i]->value = temp;
       DWIN_Send(sensor[i]->dwin_addr_val, (int)(temp * 10.0));
     }
   }

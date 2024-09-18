@@ -66,6 +66,49 @@ namespace Params
     return ret;
   }
 
+  bool Commit()
+  {
+    bool ret = false;
+    if( xSemaphore != NULL )
+    {
+      if (xSemaphoreTake(xSemaphore, (TickType_t)300) == pdTRUE)
+      {
+          EEPROM.commit();
+          xSemaphoreGive(xSemaphore);
+          ret = true;
+      }
+    }
+    return ret;
+  }
+  bool WriteByte(int addr, uint8_t value)
+  {
+    bool ret = false;
+    if( xSemaphore != NULL )
+    {
+      if (xSemaphoreTake(xSemaphore, (TickType_t)300) == pdTRUE)
+      {
+          EEPROM.writeByte(addr, value);
+          xSemaphoreGive(xSemaphore);
+          ret = true;
+      }
+    }
+    return ret;
+  }
+  uint8_t ReadByte(int addr)
+  { 
+    uint8_t ret_val = 0xFF;
+
+    if( xSemaphore != NULL )
+    {
+      if (xSemaphoreTake(xSemaphore, (TickType_t)300) == pdTRUE)
+      {
+          ret_val = EEPROM.readByte(addr);
+          xSemaphoreGive(xSemaphore);
+      }
+    }
+    return ret_val;
+  }
+
   void EEPROM_Write_Params()
   {
     if (!EEPROM_INIT)
