@@ -59,6 +59,14 @@ extern bool EEPROM_INIT;
 #define PARAM_FAN_FREQ_TEMPER       0x0B
 #define DWIN_FAN_FREQ_TEMPER        0x2100 + 25 // 2119
 
+// --- PWM ---------------------------------------------
+#define PARAM_PWM_DTY               0x10
+#define PARAM_PWM_1_DTY             PARAM_PWM_DTY + 0
+#define PARAM_PWM_2_DTY             PARAM_PWM_DTY + 1
+#define DWIN_PWM_DTY                0x2178
+#define DWIN_PWM_1_DTY              DWIN_PWM_DTY + 0
+#define DWIN_PWM_2_DTY              DWIN_PWM_DTY + 2
+
 // --- DS18B20 -----------------------------------------
 #define DWIN_TEMP_SET               0x2132
 #define DWIN_TEMP_HOT_IN_SET        DWIN_TEMP_SET + 00 // 2132
@@ -96,6 +104,9 @@ extern bool EEPROM_INIT;
 #define DWIN_ADC15                  DWIN_ADC_VAL + 15   // 0x216E                
 
 
+
+
+// --- RELAY -------------------------------------------
 
 
 

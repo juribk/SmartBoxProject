@@ -2,6 +2,8 @@
 #include "Params.h"
 #include "FREQ.h"
 #include "DS18B20.h"
+#include <MCP23009.h> 
+#include <PWM.h> 
 
 
 static const char *TAG_DWIN = "DWIN_events";
@@ -60,6 +62,11 @@ int DWIN_Get_Addr_Param(int dwin_addr)
     case DWIN_EXCHANGER_ON:
       return PARAM_EXCHANGER_ON;
 
+    case DWIN_PWM_1_DTY:
+      return PARAM_PWM_1_DTY;
+    case DWIN_PWM_2_DTY:
+      return PARAM_PWM_2_DTY;
+
     default:
       return 0;
   }
@@ -81,7 +88,7 @@ void DWIN_Rx_Task(void* pvParameters)
     bool receved = xQueueReceive(queue, &msg_rx, (TickType_t)portMAX_DELAY);
     if (receved)
     {
-      //ESP_LOGI(TAG_DWIN, "Addr=%04X, Value=%04X", msg_rx.addr, msg_rx.value);
+      ESP_LOGI(TAG_DWIN, "Addr=%04X, Value=%04X", msg_rx.addr, msg_rx.value);
       msg_tx.type = TYPE_SET;
       msg_tx.addr = 0;
 
@@ -105,6 +112,11 @@ void DWIN_Rx_Task(void* pvParameters)
           break;
         // ------------------------------------------------
         case DWIN_EXCHANGER_ON + 1:
+          if (relay::relay->Set_GPIO(RELAY_EXCHANGER_ON, msg_rx.value))
+          {
+            DWIN_Send(DWIN_EXCHANGER_ON, msg_rx.value);
+          }
+
           break;
         
         // --- Регистрация температурных датчиков ---------
@@ -119,6 +131,23 @@ void DWIN_Rx_Task(void* pvParameters)
           sensor->Search_Device_Address();
 
           ESP_LOGI(TAG_DWIN, "DWIN_TEMP_SET: value=%d", msg_rx.value);
+          break;
+        }
+        // --- PWM ---------------------------------------------
+        case DWIN_PWM_1_DTY + 1:
+        case DWIN_PWM_2_DTY + 1:
+        {
+          int addrparam = DWIN_Get_Addr_Param(msg_rx.addr - 1);
+          ESP_LOGI(TAG_DWIN, "DWIN_PWM_1_DTY: addr=%04X, value=%d, addrparam=%d", msg_rx.addr, msg_rx.value, addrparam);
+          bool ret = pwm::pwm[addrparam - PARAM_PWM_DTY]->Set_Duty_Cycle_Percent((float)msg_rx.value / 10);
+          if (ret)
+          {
+            // ESP_LOGI(TAG_DWIN, "DWIN_PWM_1_DTY: addr%04X, value=%d", msg_rx.addr - 1, msg_rx.value);
+            Params::Set_Param(DWIN_Get_Addr_Param(msg_rx.addr), (float)msg_rx.value / 10);
+            DWIN_Send(msg_rx.addr - 1, msg_rx.value);
+
+          }
+
           break;
         }
 

@@ -7,6 +7,9 @@
 #include "FREQ.h"
 #include "DS18B20.h"
 #include "ADS1115.h"
+#include <MCP23009.h> 
+#include <PWM.h> 
+
 
 // #define I2C_ADDRESS 0x4A
 // ADS1115_WE adc;
@@ -35,6 +38,7 @@ void ARDUINO_ISR_ATTR onTimer_Read_Sensors()
 void setup() 
 {
   Serial.begin(115200);  
+  
   // --- I2C -----------------------------
   Wire.begin();
 
@@ -46,6 +50,13 @@ void setup()
 
   // --- ADS1115 -------------------------
   ads1115::Init(); 
+
+  // --- MCP23009 ------------------------
+  relay::Relay_Init(MCP23009_I2C_ADDR);
+
+  // --- PWM -----------------------------
+  pwm::Init();
+
 
   // --- DWIN & FREQ init ----------------
   Freq::FREQ_Init(UART_NUM_RS485, 17, 16, 4, 57600);
@@ -107,7 +118,7 @@ void loop()
     }
 
 
-    delay(100);
+    delay(1000);
 
 
 

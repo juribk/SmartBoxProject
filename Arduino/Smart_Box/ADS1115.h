@@ -32,6 +32,11 @@ namespace ads1115
     private:
       int param_index;
 
+      // Терморезистор
+      double R1;        // voltage divider resistor value
+      double Beta;      // Beta value 3470
+      double To;        // Temperature in Kelvin for 25 degree Celsius
+      double Ro;        // Resistance of Thermistor at 25 degree Celsius
 
     public:
       ADS1115(int param_index, int dwin_addr_val);

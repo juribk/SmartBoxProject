@@ -20,23 +20,23 @@ namespace ads1115
 
   ADS1115_WE adc;
   bool ADS1115_INIT = false;
+  double Vs = 3.3;
 
 
   ADS1115::ADS1115(int param_index, int dwin_addr_val)
   {
+    // Терморезистор
+    R1 = 20000.0;      // voltage divider resistor value
+    Beta = 3920.0;     // Beta value 3470 3950
+    To = 298.15;       // Temperature in Kelvin for 25 degree Celsius
+    Ro = 20000.0;      // Resistance of Thermistor at 25 degree Celsius
+    Vs = 3.3;
+
     this->param_index = param_index;
     this->dwin_addr_val = dwin_addr_val;
 
   }
 
-  // Терморезистор
-  double R1 = 20000.0;      // voltage divider resistor value
-  //double Beta = 3950.0;   // Beta value 3470
-  double Beta = 3920.0;     // Beta value 3470
-  double To = 298.15;       // Temperature in Kelvin for 25 degree Celsius
-  double Ro = 20000.0;      // Resistance of Thermistor at 25 degree Celsius
-  double Vs = 3.3;
-  //double adcMax = 65536.0;  // 4096.0;
   float ADS1115::TempC()
   {
     double Vt = Vs - (value - 0.020); // Коррекция. Надо проверить это
@@ -53,6 +53,8 @@ namespace ads1115
   double v220_Ref = 218.0;
   float ADS1115::Volt_220()
   {
+    /// TODO: Возможно надо отнять среднее напряжение и откалибровать заново .
+    /// v220_Ref - ACS712_REF / 2
     float v220 = (v220_Ref / v220_Max) * max_value;    
     return v220;
   }
@@ -140,7 +142,7 @@ namespace ads1115
       DWIN_Send(ads1115[i]->dwin_addr_val, (int)ads1115[i]->Get_Adc_Dwin_Addr_Val());
 
 
-      ESP_LOGI(TAG, "### ADS1115[%d]=%f, TEMP=%f, CURRENT=%f, MAX_VALUE=%f - %f", i, ads1115[i]->value, ads1115[i]->TempC(), ads1115[i]->Current_220(), ads1115[i]->max_value, ads1115[i]->Volt_220());
+      //ESP_LOGI(TAG, "### ADS1115[%d]=%f, TEMP=%f, CURRENT=%f, MAX_VALUE=%f - %f", i, ads1115[i]->value, ads1115[i]->TempC(), ads1115[i]->Current_220(), ads1115[i]->max_value, ads1115[i]->Volt_220());
     }
 
     // --- REF for 3.3V

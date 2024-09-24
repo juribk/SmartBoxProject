@@ -47,6 +47,7 @@ namespace Freq
   void FREQ_Command(int cmd, int addr, int value);
 
   void FREQ_Init(int uart_num, int tx_io_num, int rx_io_num, int de_io_num, int baud_rate);
+  float Divide(float val, float divider);
   uint16_t CRC_From_Buff(uint8_t *buf, uint16_t length);
 }
 
